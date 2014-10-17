@@ -1,0 +1,15 @@
+function[Disp] = getDispMatrix(x,y,m,n,E0);
+Disp = Inf(n,m);
+for y = 1:n
+    for x = 1:m
+        minVal = Inf;
+        for d = 4:4:252
+            if E0(y,x,d) < minVal
+                minVal = E0(y,x,d);
+                minDisp = d;
+            end
+        end
+        Disp(y,x) = minDisp;
+    end
+end
+end

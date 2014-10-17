@@ -1,0 +1,251 @@
+<title>Computer Vision Homework #4 -- Tom Crossland</title>
+<center><h1>CS 4501: Computer Vision<br>Homework Assignment #4</h1>
+<h2>Tom Crossland (tcc4dr)</h2><br><br></center>
+
+<h2>Matlab code</h2>
+<a href="./diffuse.m">Function to perform diffusion</a><br>
+<a href="./disparitySpace.m">Function to help visualize disparity space</a><br>
+<a href="./getWinMargin.m">Function to get the winning margin values from disparity space</a> <br>
+<a href="./printDispImg.m">Function to convert disparity space into a disparity image</a> <br>
+<a href="./printDispMap.m">Helper function to help visualize disparity space</a><br>
+<a href="./spaceTimeStereo.m">Function to perform space-time stereo technique</a> <br>
+<a href="./stereoSSD.m">Function to perform various stereo techniques</a> <br>
+
+<h2>1. Disparity Space</h2>
+
+I wrote my disparity space visualizer in the matlab function disparitySpace.m. This function takes four parameters: dir, lFile, rFile, and NUM.  dir is the directory in which you want to work in.  The program assumes that this directory exists for simplicity's sake.  lFile and rFile are the two image files you want to compute the disparity space between.  These files are assumed to be in the directory dir.  lFile is the image shifted to the left while rFile is the image shifted to the right.  For ease of use and understanding, the program assumes that each file is valid.  For simplicity's sake, the images are assumed to be lined up. In order for the disparity space to be adequately calculated, these two images should be of roughly the same scene which the field of view shifted to the right in the right image.  This program displays the 2D slice of the disparity space for NUM number of horizontal 200 pixel strips.  NUM is assumed to be a positive integer greater than zero.
+<br><br>
+The program loads the left and right image files from the given directory and converts them into intesity images.  The right image is designated as the reference image for calculating the disparity space.  The right image is then displayed.  The user then selects NUM number of points in the reference image.  These selected points correspond to the 200 pixel strips that the disparity space is being visualized for.  The start of each strip is one of the selected points.  The strip is then composed of 199 pixels to the right of each selected point.
+<br><br>
+Now that the program has the 200 pixel strips in which the user wants to visualize the disparity space for, the disparity space for each segment can now be calculated.  For each strip, perform the following process.  For every 200 pixels in the strip in the reference image, grab the corresponding pixels in the non-reference image.  At first, shift over the strip window by one pixel.  This corresponds to a disparity of one.  Now calcualte the intensity difference between each pixel in the reference image and its corresponding shifted pixel being looked at in the non-reference image.  Store these values for each pixel in the strip for the corresponding disparity just looked at.  Continue this process for each disparity to shift the strip window in the non-reference image by until the program either reaches the maximum disparity being considered (in this assignment, I will assume this to be 63 pixels) or until the shift window reaches the border of the non-reference image.  As a result, you should have a 63x200 matrix of intensity differences: each pixel in the reference strip is compared against a similar sized window in the non-reference image at least 63 times.  This number of times corresponds to the amount the window in the non-reference image being compared to is shifted over.  In the end for each x value in the image and each possibly disparity being considered, there will be an intensity difference calculated.  I took this 63x200 matrix, normalized it, and displayed it as a grayscale image.  Points of good agreement are thus more black while points of poor agreement are more white.  For better comprehension on my part, I decided to make the bottom row of the visualization to represent a disparity of 1 while the top row represented a disparity of 63, or the max possible disparity.  The following are various disparity spaces visualized for selected horizontal 200 pixel strips in the images provided.
+
+<h3>cones</h3>
+Left image<br>
+<img src="./cones/im2.png"></img><br><br>
+Right (base) image<br>
+<img src="./cones/im6.png"></img><br><br>
+Selected 200-pixel segments<br>
+<img src="./cones/DispSpace/cones-selection.png"></img><br><br>
+Segment 1: Starting at Point (140,140)<br>
+<img src="./cones/DispSpace/cones-1-140-140.png"></img><br><br>
+Segment 2: Starting at Point (48,212)<br>
+<img src="./cones/DispSpace/cones-2-48-212.png"></img><br><br>
+Segment 3: Starting at Point (135,263)<br>
+<img src="./cones/DispSpace/cones-3-135-263.png"></img><br><br>
+Segment 4: Starting at Point (125,309)<br>
+<img src="./cones/DispSpace/cones-4-125-309.png"></img><br><br>
+
+As seen above, I selected four different 200 pixel segments from my reference image.  The top segment will hereinafter be referred to as the first segment.  The one below it will be known as the second segment and so forth.  The selected segments appear to cover various objects at different depths in the scene of the field as evident by the provided ground truth disparity images (see next section). The objects in the first segment appear to be relatively in the midground.  Therefore, their corresponding disparities should be near the middle of the range of possible values.  Looking at the disparity slice of the first segment, one can visualize this.  Lighter pixels in the disparity map slice image correspond to higher intensity differences amongst the pixels being considered.  Darker pixels have the opposite correspondence.  Pixels can, more or less, be grouped together in the strip.  Pixels of similar intensities adjacent to one another can be thought of as composing the same object at the same depth. In the first 200 pixel strip, one can distinctly differentiate which pixels correspond to theobjects in the reference image. Comparing these groups of pixels in the strip to other pixels not in the reference image leads to a great visualization, when similar adjacent pixels line up with one another between the reference and the "shifted" image, one can observe "darker" values inthe disparity space for that particular disparity.  The opposite phenomena can be observed as well. Pixels in the reference image representing the same object at the same depth being compared to different pixels will create "lighter" values in the disparity space for that disparity being considered.  Therefore, objects with good disparity matches will have "dark" segments in the disparity space slice roughly as many pixels across as the object is in the reference image at said disparity.  In the first segment, one can see groups of longer horizontal black segments near disparities of medium length.  These segments correspond to the objects in the selected strip being at medium depth.  The corresponding disparities of each object in the reference image of each selected segment can be seen in the disparity map slice as well.  The second segment has long dark horizontal lines for medium disparity values.  The third and fourth segments have a long dark horizontal line corresponding to increased disparities for the position of the green cones in the picture.  This is because the green cone is more in the foreground than other objects in the two segments.
+<br><br>
+However, finding the correct disparities could be hindered by many factors.  One of these factors is occlusion.  Consider the wooden mask behind the green cone in the third segment.  At different view angles, different parts of the mask will show or not show behind the green cone.  In the non-reference image, part of mask visible in the reference image is now blocked by the cone in the foreground.  Therefore, there will be much difficulty in matching these pixels to the non-reference image since the non-reference image won't include these pixels.  It is difficult to estimate the correct disparity at certain texture-less areas.  Because there is no texture, there is difficulty is matching which pixel in the area corresponds to its correct match in the non-reference image.  If the pixels are texture-less and appear to have the same intensity, multiple matches could be found.  This is apparent in the disparity space slices where there are large dark diamonds.  The same may be true for reflective surfaces.  Depending which way rays are reflected on them, these surfaces could appear to be different in different pictures.  This would make it very difficult to find a window match in the two images among different disparities.  However, finding the correct disparity should be easiest when dealing with textured areas across many depths with minimal occulsion as evident by many of the disparity space slices shown above.  Below are some more disparity space slices that exhibit similar characteristics for the teddy data set.
+
+<h3>teddy</h3>
+Left image<br>
+<img src="./teddy/im2.png"></img><br><br>
+Right (base) image<br>
+<img src="./teddy/im6.png"></img><br><br>
+Selected 200-pixel segments<br>
+<img src="./teddy/DispSpace/teddy-selection.png"></img><br><br>
+Segment 1: Starting at Point (169,57)<br>
+<img src="./teddy/DispSpace/teddy-1-169-57.png"></img><br><br>
+Segment 2: Starting at Point (142,155)<br>
+<img src="./teddy/DispSpace/teddy-2-142-155.png"></img><br><br>
+Segment 3: Starting at Point (185,283)<br>
+<img src="./teddy/DispSpace/teddy-3-185-283.png"></img><br><br>
+Segment 4: Starting at Point (51,334)<br>
+<img src="./teddy/DispSpace/teddy-4-51-334.png"></img><br><br>
+
+
+<h2>2. Stereo</h2>
+
+Ground Truth Disparity Image for Cones<br>
+<img src="./cones/disp6.png"></img><br><br>
+Ground Truth Disparity Image for Teddy<br>
+<img src="./teddy/disp6.png"></img><br><br>
+
+<h3>Standard SSD</h3>
+To complete the stereo matching algorithms, I decided implemented a main function in matlab called stereoSSD.m with seven parameters: dir, lFile, rFile, nSize, setting,, Px, and Py.  dir is the directory in which you want to work in.  The program assumes that this directory exists for simplicity's sake.  lFile and rFile are the two image files you want to perform stereo matching between.  These files are assumed to be in the directory dir.  lFile is the image taken with the field of view shifted to the left while rFile is the image's field of view is shifted to the right.  For ease of use and understanding, the program assumes that each file is valid.  In order to perform stereo matching, these two images should be of roughly the same scene which the field of view shifted to the right in the right image. nSize is the window size used when computing intensity differences at each pixel.  setting determines which algorithm for stereo matching the user wants to perform.  When setting is 0, the program performs the standard "sum-of-squares" algorithm for a range of window sizes. When setting is 1, the program performs the "membrane model" algorithm for a range of window sizes.  When setting is 2, the program performs diffusion with local stopping criteria. Px is an array of x coordinates of the starting positions of the horizontal 200 pixel strips the program wants to visualize the 2D disparity space slice for. Py is an array of y coordinates of the starting positions of the horizontal 200 pixel strips the program wants to visualize the 2D disparity space slice for. Px and Py are assumed to have the same size.  The i-th element in Px corresponds to the i-th element in Py. For the i-th horizontal 200 pixel strip, the starting coordinate is (Px(i),Py(i)).
+<br><br>
+To perform the standard "sum-of-squares" approach for stereo matching, the program calculates the full dispartiy space for the two images.  The program loops over every combination of possible disparity, x, and y values for the images.  At each combination, the program grabs a window of size nSize centered around the current pixel.  nSize corresponds to the amount of pixels on either size of the current pixel being looked at.  If nSize is 2, the window would consist of the current pixel and the two pixels to the left and right of this.  In this implementation, we are only considering one row of pixels at a time.  Therefore, the windows being found are one-dimensial in the x direction.  Find the squared difference between the intensity of each pixel in each window at the current location in the reference image and its corresponding pixel in the window at the current location shifted over by the current disparity being considered in the non-reference image.  Sum up these differences between each corresponding pixel in the window.  Store this sum in the disparity space table index by the current pixel (x,y point) the window is centered at and the disparity being considered. Because the program moves over by one pixel at a find when finding the SSD, to speed up calculations, I had the program calculate the current window's SSD score by subtracting the SSD score of the previous lowest column if moved and added the SSD score of the highest column being looked at in the window if just moved there.  Once the SSD for each window centered around each pixel is calculated, the disparity space is complete.  For however many 200 pixel strips the user inputted, one can create visualizations for the 2D disparity space slice from this three dimensional matrix.
+<br><br>
+For each pixel location in the disparity space, find the minimum sum of squared difference for each disparity.  Whereever this minimum occurs indicates the window of pixels shifted over by that disparity in the non-reference image agreed the best with the window of pixels in the reference image.  Store this disparity value for that pixel location.  This indicates that at position (x,y), the disparity between the object in the reference image and the same object in the non-reference image is the stored value. Once these minimum difference disparities are found and stored in a matrix, the program normalizes this matrix and converts it into a grayscale image.  This produces a stereo reconstruction image in which the objects in the scene are shaded based on their position in the depth of field.  Objects that are deeper in the field of view will appear to not move as much between two images.  Therefore, these objects will have a better agreement at a smaller disparity and will thus appear to be more black in the reconstructed image illustrating depth.  Objects that are closer in the field will apear te move more between the left and right images. Therefore, these objects will have a better agreement at a larger disparity and will thus appear to be lighter in the reconstructed image illustrating depth.  The following illustrate the disparity space visualizations using the first strip in the first part of the assignment and the resulting depth images using the normal SSD technique of various window sizes.
+
+<h3>cones</h3>
+Disparity Space of Segment 1 with Neighborhood Size of 1<br>
+<img src="./cones/Stereo/cones-SSD-Seg1-N1.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 3<br>
+<img src="./cones/Stereo/cones-SSD-Seg1-N3.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 5<br>
+<img src="./cones/Stereo/cones-SSD-Seg1-N5.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 10<br>
+<img src="./cones/Stereo/cones-SSD-Seg1-N10.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 20<br>
+<img src="./cones/Stereo/cones-SSD-Seg1-N20.png"></img><br><br>
+Neighborhood Size of 1<br>
+<img src="./cones/Stereo/cones-SSD-N1.png"></img><br><br>
+Neighborhood Size of 3<br>
+<img src="./cones/Stereo/cones-SSD-N3.png"></img><br><br>
+Neighborhood Size of 5<br>
+<img src="./cones/Stereo/cones-SSD-N5.png"></img><br><br>
+Neighborhood Size of 10<br>
+<img src="./cones/Stereo/cones-SSD-N10.png"></img><br><br>
+Neighborhood Size of 20<br>
+<img src="./cones/Stereo/cones-SSD-N20.png"></img><br><br>
+
+Using the standard SSD algorithm to calculate the final disparity map worked fairly well.  There seems to be interesting correlations between window size and the quality of the depth estimate image created.  The smaller the window size used, the more detailed the resulting disparity images are.  Inversely, the larger the window size used, the less detailed the resulting disparity images are.  However, the smaller the window size is, the more suseptible the program was to find the wrong disparities at certain points than in the generated images with larger windows.  Due to difficulties to be later discussed, using a smaller window to find a corresponding patch in the opposite image might yield false results.  This can be observed in the disparity space slices visualized.  With increasing neighborhood size, the more blurred and less dark the disparity spaces become. This provides a much better indication of which disparities have the lowest SSD scores at an X,Y point.  This is illustrated in the disparity space visualization for neighborhood size of 20.
+<br><br>The smaller the patch is, the more likely its pattern of intensities may appear in the corresponding image.  Therefore, false matches may be made.  This is evident in the disparity space slices and disparity images for smaller window sizes. The space slices seem to have more dark patches indicating more matches for the selected pixels.  Random dots of black and white noise can be seen in the disparity images which can be observed to be false information instead of actual disparities judging by the ground truth files. However, in the disparity image with a neighborhood size of 1, one can distinctly make out the 12 cones in the left side of the image.  However, as you increase the window size, the more prone to error it is since you are looking for correspondence between two large patches that will most likely have more disagreements. With a neighborhood size of 5, you can still see the cones.  However, one can start to see the algorithm breaking down across disparity edges.  Because a larger window size is used, the disparity at borders is more likely to appear to be blurred and not be as distinct.  This effect is greatly exaggerrated for windows of size 10 and 20.  Around flat textured areas, the algorithm performed well.  The wooden gate in the background of the cones images seems to be distinctly identifiable with correct disparity as well as other objects in the scene such as the cones, cup, and mask, especially when using smaller windows.  This is because these areas are mostly textured.  When scanning the non-reference image with a window of pixels corresponding to a similar window in the reference window, the textures apply a sort of unique indentifying pattern for the patch of pixels being looked for.  Therefore, there should be a clear winner for disparity values in highly uniquely textured areas.  However, when dealing with non-textured areas, the opposite is true.  There ar e more patches that can correspond to the reference window if there is no texture indentifying the pixels in the window. This can be observed in the disparity space visualizations when looking at pixels related to the background or solidly colored cones.  Large dark regions correspond to multiple possible disparity matches.  The SSD technique did not do so well at identifying non-Lambertian areas.  The wooden tabletop seems to be polished in the pictures.  This creates a shiny surface, allowing for rays to reflect off of it at different angles.  This causes intensity differences between windows of pixels in the reference image and the corresponding patches in the non-reference image.  Therefore, identifying the correct disparity for the tabletop seemed to yield inaccurate results as evident by the generated disparity images.
+<h3>Diffusion</h3>
+For the diffusion algorithm, I had a parameter in my stereo reconstruction program to enable diffusison.  First, the program calculated the disparity space for the two images like previously mentioned in the standard sum of squared difference algorithm.  Next, for the number of iterations the program wants to perform diffusion for, the perform diffusion.  In this example, the number of iterations is hard coded to be 10 to conform with what is asked for in the assignment.  When performing diffusion, the program looks at each combination amongst x, y, and disparity values and applies the discrete diffusion update formula on it provided in the supplemental paper. The values of parameters beta and lambda are assumed to be .5 and .15 respectively. This is because these were the values tested and reported on in the supplemental paper.  The program assumes a diffusion window size of two.  The program looks at the intensity differences at the pixels one and two pixels to the right and left of the current pixel being considered for diffusion.  Keep applying this diffusion rule for the number of iterations specified.  After each iteration, save the updated diffused depth reconstruction image as well as the diffused 2D slices of the disparity space for the horizontal 200 pixel strips specified by the user.  The following are the 2D slices of disparity space for the first 200 pixel segment as specified earlier in part one of this assignment after each iteration of diffusion using various neighborhood of window sizes for the original SSD calculation.  In addition, there are also depth reconstructed images after different iterations of diffusion being applied.<br><br>
+
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 1 Iteration<br>
+<img src="./cones/Stereo/cones-Diffuse-Seg1-N1-1.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 2 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-Seg1-N1-2.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 3 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-Seg1-N1-3.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 4 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-Seg1-N1-4.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 5 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-Seg1-N1-5.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 6 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-Seg1-N1-6.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 7 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-Seg1-N1-7.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 8 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-Seg1-N1-8.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 9 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-Seg1-N1-9.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 10 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-Seg1-N1-10.png"></img><br><br>
+
+Disparity Image with Neighborhood Size of 1 after 1 Iteration<br>
+<img src="./cones/Stereo/cones-Diffuse-N1-1.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 2 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-N1-2.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 3 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-N1-3.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 4 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-N1-4.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 5 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-N1-5.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 6 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-N1-6.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 7 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-N1-7.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 8 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-N1-8.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 9 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-N1-9.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 10 Iterations<br>
+<img src="./cones/Stereo/cones-Diffuse-N1-10.png"></img><br><br>
+
+For diffusion, I used a neighborhood size of 1 for my visualizations.  Doing this seemed to improve results.  Before, using the standard SSD algorithm with a neighborhood size of 1, there were many instances in which the disparities were erratically found.  Because there were many possible matches, the disparties amongst similar pixels of the same object at the same depth sometimes appeared to have different disparity values.  Some examples of this include pixels of similar intensities and minimal textured differences like small patches being looked for in seemingly non-textured parts of the mask and cones.  The disparity space slice shows instances in which parts of the mask have many disparities with low SSD values comparing to the non-reference image.  Diffusion helps cover-up these areas by spreading the disparity values in a sense of a point to its neighbors.  By performing this many times, one can spread good, consistant neighbor values to a pixel that is most likely an anomaly.  As diffusion occurs, one can observe the "diffusion" of "good" data throughout the image in both the disparity space slices and the disparity images.  After 10 iterations, the diffusion appears to do a good job correcting anomalies inside of various objects. This is because the neighboring pixels of the anomalies have similar minimum SSD scores at the same disparity.  Diffusion will enable the anomalies to eventually converge to have minimum SSD values around the neighboring disparity values.  However, this diffusion technique does not work well for disparity edges.  Because neighboring pixels have differing disparity locations for the minimum SSD values, these multiple disparity values will be reflected on the edges after diffusion.  This blurs or smudges the outline of the objects being viewed.  For example, the cones in the final disparity image for diffusion appear to no longer be cone shaped but have smudged edges. 
+    
+<h3>Diffusion with Local Stopping Criteria</h3>
+For selection of two 200 pixel strips to visualize the disparity space for, I used my previous program for section 1.  For the diffusion with local stopping criteria algorithm, I had a parameter in my stereo reconstruction program to enable diffusison with local stopping criteria.  First, the program calculated the disparity space for the two images like previously mentioned in the standard sum of squared difference algorithm.  Next, perform diffusion with local stopping criteria for a certain number of iterations.  In this example, the number of iterations is hard coded to be 10 to conform with what is asked for in the assignment. To perform this algorithm, we need to be albe to calculate a matrix of "winner margins" for each x,y coordinate being considered in the disparity space. For each x,y coordinate, find the two lowest SSD scores amongst the valid disparities.  Find the difference between the second lowest value and the lowest value.  Divide this value by the sum of differences amongst all disparity values. Now, the program is able to perform diffusion with local stopping criteria.  First, find the winner margin values using the current three-dimensional disparity space.  Make a copy of the current disparity space being made.  To do this, I made a zero matrix of the same size and copied over the original matrix element by element.  While this uses more memory, it takes a shorter amount of time to update each element in a matrix of a constant size than to continually try to build a matrix of increasing size.  Next, perform diffusion on the disparity space as mentioned before, overwritting the old disparity space.  Now calculate the winner margin values for each pixel in the new disparity space.  Compare the normalized winner margin values before diffusion with those after diffusion. If the winner margin was greater in the ones before diffusion, restore the SSD values for each disparity at that point.  Continue doing this for however many iterations specified.  The following are visualizations of the certainty using the same first horizontal 200 pixel strip as mentioned earlier before and after applying the intial diffusion for various numbers of iterations.  In addtion, there are visualizations of the final depth reconstruction images after applying selective diffusion based on local stopping criteria. To visualize the winner margin values, I plotted the winner margin values for the x values in the first segment <br><br>  
+
+Winner Margin Plot for Segment 1 before Applying Selective Diffusion<br>
+<img src="./cones/Winner/WinnerB1.jpg"></img><br><br><br>
+
+The above plot represents the winner margin value versus the x value of a pixel in the first 200 pixel segment used.  Before applying diffusion, the winner margins seemed to be larger in areas across disparity borders and uniquely identifiable texture patches.  This makes sense because when comparing groups of pixels that are somewhat unique, the closest match by far will be with that exact same path (the correct corresponding pixel set in the non-reference image). The winner margin values appear to be low for pixels with surrounding pixels with similar intensities, textures, and surfaces.  These sets could have potentially many matches due to the similar values in intensity of the pixels in the window.  Therefore, the winner margin will be smaller in these regions. These results are expected.<br><br>
+
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 1 Iteration<br>
+<img src="./cones/Stereo/cones-Winner-Seg1-N1-1.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 2 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-Seg1-N1-2.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 3 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-Seg1-N1-3.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 4 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-Seg1-N1-4.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 5 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-Seg1-N1-5.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 6 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-Seg1-N1-6.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 7 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-Seg1-N1-7.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 8 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-Seg1-N1-8.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 9 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-Seg1-N1-9.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 10 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-Seg1-N1-10.png"></img><br><br>
+
+Disparity Image with Neighborhood Size of 1 after 1 Iteration<br>
+<img src="./cones/Stereo/cones-Winner-N1-1.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 2 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-N1-2.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 3 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-N1-3.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 4 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-N1-4.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 5 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-N1-5.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 6 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-N1-6.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 7 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-N1-7.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 8 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-N1-8.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 9 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-N1-9.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 10 Iterations<br>
+<img src="./cones/Stereo/cones-Winner-N1-10.png"></img><br><br>
+
+Incorporating a notion of certainty improves the quality of the matches at some pixels.  This method is particularly well at not performing diffusion at the areas between disparity borders.  This is because, as evident by the graph plot above, pixels at this region have a higher winner margin and other pixels.  This is because of reasons stated earlier.  One can observe the "light" SSD values in the disparity space slices not diffusing at these certain locations.  The selective diffusion is more likely to perform diffusion on anomalies mentioned earlier in the previous section inside of objects of roughly the intensity or texture composition.  However, this selective method, because of its checks and possible difficulty in computing the "true" winner margin based on intensity differences and other factors, does not as aggressively diffuse.  This leads to some anomalies with a relatively large winner margin to not be diffused.  This could be because the program compares the certainty of the winner margin before and after diffusion is applied and not to a universal threshold.  Therefore, to escape diffuse, the winner margin of a pixel only needs to be greater than its new winner margin after diffusion was applied.  Pixels near the edge seem to be more likely to diffused as well due to increased difficulty trying to find the disparity was one approaches the border or limit of the edges used.  Some parts of the right edge of the right image are not in the left image, making the disparity to be unknown for this area.  This could allow for diffusion in the selected case to occur.
+
+<h2>3. Space-Time Stereo</h2>
+To perform my space-time stereo algorithm, I reused a lot of previously written code to create a matlab function spaceTimeStereo.m  with six parameters: dir, nSize, setting, fNum, Px, and Py.  dir is the directory in which you want to work in.  The program assumes that this directory exists for simplicity's sake. In this directory, it is assumed that there will be pairs of image files you want to perform stereo matching between. Each image name is of the format 'D_XX.png.'  D can either be 'L' or 'R' depending on which "shifted" picture it is.  For every L image, there should be a corresponding R image with the same frame number.  XX corresponds to the frame number of the image.  Images with the same frame number should roughly match up together. The first frame is numbered as 00.  For ease of file access, each frame number is two digits including possible zero placeholders and ordered and accessed sequentially.  For ease of use and understanding, the program assumes that each file is a valid .png image.  In order to perform stereo matching, these two images should be of roughly the same scene which the field of view shifted to the right in the right image. fNum represents the last frame number that one wants to perform space-time stereo analysis on. fNum is a positive integer.  There should be a left and right image for each frame number from 0 to fNum in the specified directory.  nSize is the window size used when computing intensity differences at each pixel.  setting determines which algorithm for stereo matching the user wants to perform.  When setting is 0, the program performs the standard "sum-of-squares" algorithm for a range of window sizes. When setting is 1, the program performs the "membrane model" algorithm for a range of window sizes.  When setting is 2, the program performs diffusion with local stopping criteria. Px is an array of x coordinates of the starting positions of the horizontal 200 pixel strips the program wants to visualize the 2D disparity space slice for. Py is an array of y coordinates of the starting positions of the horizontal 200 pixel strips the program wants to visualize the 2D disparity space slice for. Px and Py are assumed to have the same size.  The i-th element in Px corresponds to the i-th element in Py. For the i-th horizontal 200 pixel strip, the starting coordinate is (Px(i),Py(i)).
+<br><br>
+Much of this function is the same as the previous stereo matching implementation.  However, there is an additional iterative loop over calculating the SSD values for each position in the three dimensional disparity space matrix.  In this loop, the program loads sequential frames from the directory and calculates the SSD scores for each position in disparity space.  These values are added to the sum of previous SSD scores.  The final sum of SSD scores represents the SSD values over a temporal period.  For performing diffusion and selected diffusion, see the notes on implementation from the previous section.  Below is an example of disparity space from two segments taken from the first frames of the vase data.  To generate these visualizations, I used my function written for the first section of this assignment.  
+
+<h3>vase</h3>
+Left image<br>
+<img src="./vase/L_00.png"></img><br><br>
+Right (base) image<br>
+<img src="./vase/R_00.png"></img><br><br>
+Selected 200-pixel segments<br>
+<img src="./vase/DispSpace/vase-selection.png"></img><br><br>
+Segment 1: Starting at Point (85,272)<br>
+<img src="./vase/DispSpace/vase-1-85-272.png"></img><br><br>
+Segment 2: Starting at Point (118,339)<br>
+<img src="./vase/DispSpace/vase-2-118-339.png"></img><br><br>
+
+Above, I selected two horizontal 200 pixel strips in the reference image and calculated the disparity space.  Using only the first frames, I performed the normal SSD disparity algorithm on it.
+
+<h3>vase</h3>
+Disparity Space of Segment 1 with Neighborhood Size of 1<br>
+<img src="./vase/Stereo/vase-SSD-f0-Seg1-N1.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 5<br>
+<img src="./vase/Stereo/vase-SSD-f0-Seg1-N5.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 10<br>
+<img src="./vase/Stereo/vase-SSD-f0-Seg1-N10.png"></img><br><br>
+Neighborhood Size of 1<br>
+<img src="./vase/Stereo/vase-SSD-f0-N1.png"></img><br><br>
+Neighborhood Size of 5<br>
+<img src="./vase/Stereo/vase-SSD-f0-N5.png"></img><br><br>
+Neighborhood Size of 10<br>
+<img src="./vase/Stereo/vase-SSD-f0-N10.png"></img><br><br>
+
+The quality of these estimates do not to be that accurate.  While the general shape of the object was correct in each disparity image, the actual disparity amounts do not seem to match that well.  Looking at the original images, it appears that some sort of light pattern was placed on the vase.  However, with just one frame to look at, the program believed these lines to correspond to different depths.  Therefore, throughout all the images, it appears that the vase is not made up of a solid surface but of a surface of varying depths. However, this seems to be more corrected by increasing the window size.  This allows for unique pixel patterns to be more likely recognized and uniquely identified. This can be easily visualied looking at the disparity space 2D cut for the first segment with a window size of 10. However, increased window size as mentioned earlier leads to smudging of the object's shape and loss of details of the object in the  In addition, possibly due to intensity changes and the positioning and altering of image sizes between the left and right images, various parts of the background appear to be at a close depth.<br><br>
+
+Winner Margin Plot for Segment 1 for Standard SSD with Neighborhood size of 1<br>
+<img src="./vase/Winner/WinnerB1-00.jpg"></img><br><br><br>
+Winner Margin Plot for Segment 1 for Standard SDD with time dimension with Neighborhood size of 1<br>
+<img src="./vase/Winner/WinnerB1-31.jpg"></img><br><br><br>
+
+After performing the modified version of the disparity space function to account for time, I saw a dramatic rise in winner margins than using the algorithm without taking in account time.  The maximum winner margins nearly doubled in certain areas in which the light patterns over time were able to create a unique signature for the window patch to help it be uniquely identified.  However, the winner margins were still low in some areas of similar depth and pixel intensity.  Perhaps areas where there was art on the vase got mistaken for a temporal line signature, messing up certain identification of certain pixel windows.  It is clear that perhaps performing an SSD based technique that accounts for pictures over time will improve our results. Below are the selected diffusion disparity space visualizations and disparity images for a neighborhood size of 1 over 1 frame and over all 32 frames after 10 iterations.
+
+<h3>vase</h3>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 10 Iterations for 1 Frame<br>
+<img src="./vase/Stereo/vase-Winner-f0-Seg1-N1-10.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 10 Iterations for 1 Frame<br>
+<img src="./vase/Stereo/vase-Winner-f0-N1-1.png"></img><br><br>
+Disparity Space of Segment 1 with Neighborhood Size of 1 after 10 Iterations for 32 Frames<br>
+<img src="./vase/Stereo/vase-Winner-f31-Seg1-N1-10.png"></img><br><br>
+Disparity Image with Neighborhood Size of 1 after 10 Iterations for 32 Frames<br>
+<img src="./vase/Stereo/vase-Winner-f31-N1-1.png"></img><br><br>
+
+As one can see the accuracy definitely improved using the space-time technique.  At different time intervals, different light patterns were shown on the vase.  This allowed for each pixel on the vase to have a sort of unique identifying signature.  This allowed for better results when trying to match a group of pixels from the reference image to those in the non-reference image.  The various lines allowed for the surface of the vase to appear to be more solid unlike in the estimate using one frame in which the surface appeared to not be smooth but be of different depths.  However, both techniques run into problems of trying to estimate the depths of the art on the vase.  This could be because the black lines might interfere with the displayed line signature at each point.  Therefore, this might cause other disparity values besides the accepted value to have the minimal SSD score in disparity space as seen in the disparity space 2D slice of the first segment.  Areas with art lines appear to have a larger "dark" area indicating small SSD values there.  In addition, each technique has problems identifying the depth of the background.  Random white lines appear next the vase, possibly due to intensity different at locations in the two pictures being comapred at a time. 
+
+<br><br>
+On my honor as a student, I did not give or received any unauthorized aid on this assignment<br>-Tom Crossland

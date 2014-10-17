@@ -1,0 +1,59 @@
+function [] = disparitySpace(dir,lFile,rFile)
+
+home = cd(dir);
+refImg = imread(rFile);
+IL = im2double(rgb2gray(imread(lFile)));
+IR = im2double(rgb2gray(imread(rFile)));
+cd(home);
+
+[n m] = size(IR);
+
+Px = zeros(4);
+Px_l = zeros(4);
+Px_h = zeros(4);
+Py = zeros(4);
+
+figure; imshow(refImg);
+[Px(1),Py(1)] = getpts;
+[Px(2),Py(2)] = getpts;
+[Px(3),Py(3)] = getpts;
+[Px(4),Py(4)] = getpts;
+
+for i = 1:4
+    Px_l(i) = uint8(Px(i))-99;
+    Px_h(i) = uint8(Px(i))+100;
+end
+
+for i = 1:4
+    for xi = Px_l(i)-1:Px_h(i)+1
+        regImg(uint8(Py(i))-1,xi,1) = 0;
+        regImg(uint8(Py(i))-1,xi,1) = 255;
+        regImg(uint8(Py(i))-1,xi,1) = 0;
+        regImg(uint8(Py(i))+1,xi,1) = 0;
+        regImg(uint8(Py(i))+1,xi,1) = 255;
+        regImg(uint8(Py(i))+1,xi,1) = 0;
+    end
+    
+    regImg(uint8(Py(i)),xi,1) = 0;
+    regImg(uint8(Py(i)),xi,1) = 255;
+    regImg(uint8(Py(i)),xi,1) = 0;
+    regImg(uint8(Py(i)),xi,1) = 0;
+    regImg(uint8(Py(i)),Px_1+1,1) = 255;
+    regImg(uint8(Py(i)),Px_l+1,1) = 0;
+
+    Disp = zeros(63,200);
+    d = 1;
+    while Px_h(i)+d < m
+        index = 1;
+        for x = Px_l(i):Px_h(i)
+            Disp(d,index) = (IL(uint8(Py(i)),x+d)-IR(uint8(Py(i)),x))^2;
+            index = index + 1;
+        end
+        d = d + 1;
+    end
+    dImg = mat2gray(Disp);
+    figure; imshow(dImg);
+end
+
+
+end

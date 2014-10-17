@@ -1,0 +1,18 @@
+-------- for Jason ------------
+disparity searching range in cropped images = [-234 105] 
+i.e. for each pixel (x, y) in the left image, the potential matching pixel in the right image are on the line between (x+-234, y) and (x+105, y).
+
+useful rectified stereo pair geometry:
+
+ principle point [cx, cy] = [-608.754, 271.078]
+ focal length f = 2113.121
+ baseline b = 241.016 (mm)
+
+the followings show how to reconstruct the 3d point clouds from the computed disparity image
+for every pixel (x, y, d) in the disparity image, where d is within the range [-234 105]:
+  the true disparity before cropping D = -d + offset (614.250)
+  the reconstructed 3d position [X, Y, Z] (units: mm):
+       Z = b * f / D
+       X = (x - cx) * Z / f
+       Y = (y - cy) * Z / f
+----------- end -----------------
